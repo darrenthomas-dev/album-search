@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<!--
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+     KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+-->
+<html>
+    <head>
+        <!--
+        Customize this policy to fit your own app's needs. For more guidance, see:
+            https://github.com/apache/cordova-plugin-whitelist/blob/master/README.md#content-security-policy
+        Some notes:
+            * gap: is required only on iOS (when using UIWebView) and is needed for JS->native communication
+            * https://ssl.gstatic.com is required only on Android and is needed for TalkBack to function properly
+            * Disables use of inline scripts in order to mitigate risk of XSS vulnerabilities. To change this:
+                * Enable inline JS: add 'unsafe-inline' to default-src
+        -->
+        <!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: gap: https://ssl.gstatic.com 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src *"> -->
+        <meta name="format-detection" content="telephone=no">
+        <meta name="msapplication-tap-highlight" content="no">
+        <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+        <link rel="stylesheet" type="text/css" href="css/index.css">
+        <title>Hello World</title>
+<style>
+  html, body {
+    height: 100%;
+  }
+  .container {
+    padding: 15px;
+  }
+
+  .album {
+    display: inline-block;
+    margin: 20px;
+    max-width: 350px;
+  }
+
+  ul {
+    padding: 0;
+    text-align: left;
+  }
+
+  li {
+    list-style: none;
+    margin: 10px;
+  }
+
+  p {
+    margin: 5px;
+  }
+
+  .thumbnail {
+    float: right;
+  }
+
+  .modal-body {
+    min-height: 280px;
+  }
+
+  .audio-btn {
+    margin-right: 10px;
+  }
+
+  input {
+    text-transform: capitalize;
+  }
+
+  .album-image {
+    cursor: pointer;
+  }
+</style>
+</head>
+
+<body>
+
+<!-- Modal -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+        <h4 class="modal-title" id="myModalLabel"></h4>
+      </div>
+      <div class="modal-body"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="container">
+
+  <div class="row">
+    <section class="">
+      <div class="input-group">
+        <input class="form-control input-lg" type="text" id="search" placeholder="Enter a band name">
+        <span class="input-group-btn">
+          <button class="btn btn-lg btn-primary" type="button">Search</button>
+        </span>
+      </div>
+    </section>
+  </div>
+
+  <div class="row">
+    <section class="" id="albums"></section>
+  </div>
+
+</section>
+
+<script type="text/javascript" src="cordova.js"></script>
+<script type="text/javascript" src="js/index.js"></script>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+
+<script>
+  function play_pause(track) {
+    if (track.paused) {
+      $.each($('audio'), function() {
+        this.pause();
+        this.currentTime = 0;
+      });
+      track.play();
+    } else {
+      track.pause();
+      track.currentTime = 0;
+    }
+  }
+
+  $('button').click(function() {
+    var search = $('input').val();
+    var uri = encodeURI(search);
+    album(uri);
+    $('#albums').empty();
+
+    function album(artist) {
+      $.getJSON("https://api.spotify.com/v1/search?query=" + artist + "&limit=1&type=artist", function(data) {
+
+        if (data.artists.items[0]) {
+          var id = data.artists.items[0].id;
+
+          $.getJSON("https://api.spotify.com/v1/artists/" + id + "/albums?market=GB&album_type=album,compilation&limit=50", function(data) {
+
+            var album_details = "";
+
+            if (data.items[0]) {
+
+              $.each(data.items, function(i, items) {
+
+                var id = items.id;
+                var cover_art = items.images[0].url;
+                var album = items.name;
+                var album_type = items.album_type;
+
+                console.log(album + " - " + album_type);
+
+                album_details = "<h2>" + album + "</h2>"
+                album_details += "<img width='350px' class='album-image img-responsive' data-toggle='modal' data-target='#myModal' src='" + cover_art + "' />";
+
+                $('#albums').append("<div class='album' id='" + id + "'>" + album_details + "<ul></ul></div>");
+
+              })
+            } else {
+              alert("Sorry, no albums found for " + search + ".")
+            }
+
+            $('img').click(function() {
+
+              $('.modal-body').empty();
+
+              var id = $(this).parent().attr('id');
+
+              if ($('#' + id + ' ul').children().length > 0) {
+                $('#' + id + ' ul').hide();
+              } else {
+
+                $.getJSON("https://api.spotify.com/v1/albums/" + id, function(data) {
+
+                  var album_title = data.name;
+                  var album_image = data.images[0].url;
+                  var release_date = data.release_date;
+
+                  $('.modal-title').html("<h2>" + album_title + "</h2>" + "<p>Released: " + release_date + "</p>");
+                  $('.modal-body').append("<img class='thumbnail img-responsive' width='250px' src='" + album_image + "'/>");
+
+                  var disc_number = true;
+
+                  $.each(data.tracks.items, function(i, items) {
+
+                    var name = items.name;
+                    var track = items.track_number;
+                    var audio = items.preview_url;
+                    var list = "";
+                    var disc = items.disc_number;
+
+                    if (disc != 1 && disc_number == true) {
+                      list += "<h3>Disc 2</h3>";
+                      disc_number = false;
+                    }
+
+                    if (audio) {
+                      list += ("<li><button class='btn btn-success audio-btn' type='button' onclick='play_pause(track_" + track + id + ")'>Play</button><audio class='song' id='track_" + track + id + "'><source src='" +
+                        audio + "' type='audio/mpeg'></audio>");
+                    } else {
+                      list += ("<li>");
+                    }
+
+                    list += (track + ". " + name + "</li>");
+
+                    $('.modal-body').append(list);
+                  });
+                });
+              }
+            });
+          });
+        } else {
+          alert("Sorry, no results found for " + search + ".");
+        }
+      });
+    };
+  });
+
+  $('body').on('hidden.bs.modal', '.modal', function() {
+    $('audio').trigger('pause');
+  });
+</script>
+
+    </body>
+</html>
